@@ -1,0 +1,13 @@
+name: AppWright E2E Tests
+
+on:  push:    branches: [ main ]  workflow_dispatch: # Allow manual triggering
+
+jobs:  run-tests:    runs-on: ubuntu-latest    steps:      - name: Checkout repository        uses: actions/checkout@v3
+
+      - name: Set up Go        uses: actions/setup-go@v3        with:          go-version: '1.19'
+
+      - name: Build qgjob CLI        run: go build -v -o ./qgjob ./cmd/qgjob
+
+      - name: Submit Test Job        id: submit        run: |          # Redirect qgjob's output (the job_id) to a file and also set it as a GitHub Actions output variable          JOB_ID=$(./qgjob submit \            --org-id=${{ secrets.QG_ORG_ID }} \            --app-version-id=${{ github.sha }} \            --test=tests/onboarding.spec.js \            --target=emulator)          echo "Submitted job with ID: $JOB_ID"          echo "job_id=$JOB_ID" >> $GITHUB_OUTPUT
+
+      - name: Poll for Job Completion        run: |          # Call a robust polling script instead of a fragile loop in YAML          chmod +x ./scripts/poll_status.sh          ./scripts/poll_status.sh ${{ steps.submit.outputs.job_id }}

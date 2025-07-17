@@ -1,0 +1,92 @@
+syntax = "proto3";
+
+package job_service;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "qualgent/job_service";
+
+// JobService is the main service for managing jobs.
+service JobService {
+  // SubmitJob submits a new test job.
+  rpc SubmitJob(SubmitJobRequest) returns (SubmitJobResponse);
+  // GetJobStatus retrieves the status of a job.
+  rpc GetJobStatus(GetJobStatusRequest) returns (GetJobStatusResponse);
+  // RegisterAgent allows an agent to register with the orchestrator.
+  rpc RegisterAgent(RegisterAgentRequest) returns (RegisterAgentResponse);
+  // UpdateJobStatus is used by an agent to report job progress.
+  rpc UpdateJobStatus(UpdateJobStatusRequest) returns (UpdateJobStatusResponse);
+}
+
+// Enum for the execution target.
+enum Target {
+  TARGET_UNSPECIFIED = 0;
+  EMULATOR = 1;
+  DEVICE = 2;
+  BROWSERSTACK = 3;
+}
+
+// Enum for the job status.
+enum Status {
+  STATUS_UNSPECIFIED = 0;
+  PENDING = 1;
+  SCHEDULED = 2;
+  ASSIGNED = 3;
+  RUNNING = 4;
+  COMPLETED = 5;
+  FAILED = 6;
+  RETRYING = 7;
+}
+
+// Request to submit a new job.
+message SubmitJobRequest {
+  string org_id = 1;
+  string app_version_id = 2;
+  string test_path = 3;
+  int32 priority = 4;
+  Target target = 5;
+  string idempotency_key = 6;
+}
+
+// Response for a submitted job.
+message SubmitJobResponse {
+  string job_id = 1;
+  Status status = 2;
+}
+
+// Request to get the status of a job.
+message GetJobStatusRequest {
+  string job_id = 1;
+}
+
+// Response for a job status request.
+message GetJobStatusResponse {
+  string job_id = 1;
+  Status status = 2;
+  google.protobuf.Timestamp created_at = 3;
+  google.protobuf.Timestamp completed_at = 4;
+  string logs_url = 5;
+}
+
+// Request to register a new agent.
+message RegisterAgentRequest {
+  string hostname = 1;
+  string target_capability = 2;
+}
+
+// Response for an agent registration request.
+message RegisterAgentResponse {
+  string agent_id = 1;
+}
+
+// Request to update the status of a job.
+message UpdateJobStatusRequest {
+  string job_id = 1;
+  Status status = 2;
+  string agent_id = 3;
+}
+
+// Response for a job status update request.
+message UpdateJobStatusResponse {
+  bool success = 1;
+}

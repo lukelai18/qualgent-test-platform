@@ -21,10 +21,10 @@ A scalable, modular, and resilient test orchestration platform for distributed e
 
 ```mermaid
 graph TD
-  CLI[qgjob CLI] <--> Server[job-server (gRPC)]
-  Server <--> Agents[Agents/Workers]
-  Server --> DB[(PostgreSQL)]
-  Server --> Redis[(Redis)]
+  CLI["qgjob CLI"] -- gRPC --> Server["job-server"]
+  Server -- assign jobs --> Agents["Agents/Workers"]
+  Server -- store --> DB["PostgreSQL"]
+  Server -- queue/cache --> Redis["Redis"]
 ```
 
 - **qgjob CLI**: User-facing tool for submitting and tracking jobs.

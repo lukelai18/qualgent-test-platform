@@ -2,7 +2,7 @@
 
 set -e
 
-echo Generating protobuf code..."
+echo "Generating protobuf code..."
 
 # Create the proto output directory
 mkdir -p api/proto/gen

@@ -29,8 +29,16 @@ func NewJobService(postgresStore *store.PostgresStore, redisStore *store.RedisSt
 
 func (s *JobService) SubmitJob(ctx context.Context, req *pb.SubmitJobRequest) (*pb.SubmitJobResponse, error) {
 	// Validate request
-	if req.OrgId == "" || req.AppVersionId == "" || req.TestPath == "" {
-		return nil, status.Error(codes.InvalidArgument, "org_id, app_version_id, and test_path are required")
+	if req.OrgId == "" || req.TestPath == "" {
+		return nil, status.Error(codes.InvalidArgument, "org_id and test_path are required")
+	}
+
+	if req.Target == pb.Target_WEB && req.WebAppUrl == "" {
+		return nil, status.Error(codes.InvalidArgument, "web_app_url is required for web target")
+	}
+
+	if req.Target != pb.Target_WEB && req.AppVersionId == "" {
+		return nil, status.Error(codes.InvalidArgument, "app_version_id is required for non-web targets")
 	}
 
 	// Check idempotency if provided
@@ -52,6 +60,8 @@ func (s *JobService) SubmitJob(ctx context.Context, req *pb.SubmitJobRequest) (*
 		Target:         targetToString(req.Target),
 		Status:         "PENDING",
 		IdempotencyKey: &req.IdempotencyKey,
+		WebAppURL:      &req.WebAppUrl,
+		TestType:       testTypeToString(req.TestType),
 	}
 
 	if err := s.postgresStore.CreateJob(ctx, job); err != nil {
@@ -93,10 +103,15 @@ func (s *JobService) GetJobStatus(ctx context.Context, req *pb.GetJobStatusReque
 	// Try to get from cache first
 	statusStr, err := s.redisStore.GetJobStatus(ctx, jobID)
 	if err == nil {
-		return &pb.GetJobStatusResponse{
-			JobId:  req.JobId,
-			Status: stringToStatus(statusStr),
-		}, nil
+		// Get job details from database for timestamp
+		job, err := s.postgresStore.GetJob(ctx, jobID)
+		if err == nil {
+			return &pb.GetJobStatusResponse{
+				JobId:      req.JobId,
+				Status:     stringToStatus(statusStr),
+				CreatedAt:  timestamppb.New(job.CreatedAt),
+			}, nil
+		}
 	}
 
 	// Get from database
@@ -110,11 +125,41 @@ func (s *JobService) GetJobStatus(ctx context.Context, req *pb.GetJobStatusReque
 		log.Printf("Failed to cache job status: %v", err)
 	}
 
-	return &pb.GetJobStatusResponse{
+	response := &pb.GetJobStatusResponse{
 		JobId:      job.ID.String(),
 		Status:     stringToStatus(job.Status),
 		CreatedAt:  timestamppb.New(job.CreatedAt),
-	}, nil
+	}
+	
+	if job.CompletedAt != nil {
+		response.CompletedAt = timestamppb.New(*job.CompletedAt)
+	}
+	if job.SessionID != nil {
+		response.SessionId = *job.SessionID
+	}
+	if job.LogsURL != nil {
+		response.LogsUrl = *job.LogsURL
+	}
+	if job.VideoURL != nil {
+		response.VideoUrl = *job.VideoURL
+	}
+	if job.ErrorMessage != nil {
+		response.ErrorMessage = *job.ErrorMessage
+	}
+	if job.TestDuration != nil {
+		response.TestDuration = *job.TestDuration
+	}
+	
+	// Debug logging
+	log.Printf("Job %s: status=%s, session_id=%s, logs_url=%s, video_url=%s, test_duration=%d", 
+		job.ID, job.Status, 
+		func() string { if job.SessionID != nil { return *job.SessionID } else { return "nil" } }(),
+		func() string { if job.LogsURL != nil { return *job.LogsURL } else { return "nil" } }(),
+		func() string { if job.VideoURL != nil { return *job.VideoURL } else { return "nil" } }(),
+		func() int32 { if job.TestDuration != nil { return *job.TestDuration } else { return 0 } }(),
+	)
+	
+	return response, nil
 }
 
 func (s *JobService) RegisterAgent(ctx context.Context, req *pb.RegisterAgentRequest) (*pb.RegisterAgentResponse, error) {
@@ -184,6 +229,35 @@ func (s *JobService) UpdateJobStatus(ctx context.Context, req *pb.UpdateJobStatu
 	}, nil
 }
 
+func (s *JobService) FetchJob(ctx context.Context, req *pb.FetchJobRequest) (*pb.FetchJobResponse, error) {
+	if req.TargetCapability == "" {
+		return nil, status.Error(codes.InvalidArgument, "target_capability is required")
+	}
+
+	// For simplicity, this example fetches the first available job.
+	// A real implementation would have more sophisticated logic.
+	job, err := s.postgresStore.GetNextJob(ctx, req.TargetCapability)
+	if err != nil {
+		log.Printf("Failed to get next job: %v", err)
+		return nil, status.Error(codes.Internal, "failed to get next job")
+	}
+
+	if job == nil {
+		return nil, status.Error(codes.NotFound, "no jobs available")
+	}
+
+	return &pb.FetchJobResponse{
+		JobId:          job.ID.String(),
+		OrgId:          job.OrgID,
+		AppVersionId:   job.AppVersionID,
+		TestPath:       job.TestPath,
+		Priority:       job.Priority,
+		Target:         stringToTarget(job.Target),
+		WebAppUrl:      *job.WebAppURL,
+		TestType:       stringToTestType(*job.TestType),
+	}, nil
+}
+
 // Helper functions for converting between protobuf and string representations
 func targetToString(target pb.Target) string {
 	switch target {
@@ -193,6 +267,8 @@ func targetToString(target pb.Target) string {
 		return "device"
 	case pb.Target_BROWSERSTACK:
 		return "browserstack"
+	case pb.Target_WEB:
+		return "web"
 	default:
 		return "unspecified"
 	}
@@ -238,4 +314,41 @@ func statusToString(status pb.Status) string {
 	default:
 		return "UNSPECIFIED"
 	}
-} 
+}
+
+func stringToTarget(target string) pb.Target {
+	switch target {
+	case "emulator":
+		return pb.Target_EMULATOR
+	case "device":
+		return pb.Target_DEVICE
+	case "browserstack":
+		return pb.Target_BROWSERSTACK
+	case "web":
+		return pb.Target_WEB
+	default:
+		return pb.Target_TARGET_UNSPECIFIED
+	}
+}
+
+func testTypeToString(testType pb.TestType) string {
+	switch testType {
+	case pb.TestType_PLAYWRIGHT:
+		return "PLAYWRIGHT"
+	case pb.TestType_ESPRESSO:
+		return "ESPRESSO"
+	default:
+		return "UNSPECIFIED"
+	}
+}
+
+func stringToTestType(testType string) pb.TestType {
+	switch testType {
+	case "PLAYWRIGHT":
+		return pb.TestType_PLAYWRIGHT
+	case "ESPRESSO":
+		return pb.TestType_ESPRESSO
+	default:
+		return pb.TestType_TEST_TYPE_UNSPECIFIED
+	}
+}

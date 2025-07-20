@@ -16,6 +16,8 @@ service JobService {
   rpc RegisterAgent(RegisterAgentRequest) returns (RegisterAgentResponse);
   // UpdateJobStatus is used by an agent to report job progress.
   rpc UpdateJobStatus(UpdateJobStatusRequest) returns (UpdateJobStatusResponse);
+  // FetchJob fetches a job for a given target capability.
+  rpc FetchJob(FetchJobRequest) returns (FetchJobResponse);
 }
 
 // Enum for the execution target.
@@ -24,6 +26,13 @@ enum Target {
   EMULATOR = 1;
   DEVICE = 2;
   BROWSERSTACK = 3;
+  WEB = 4;
+}
+
+enum TestType {
+  TEST_TYPE_UNSPECIFIED = 0;
+  PLAYWRIGHT = 1;
+  ESPRESSO = 2;
 }
 
 // Enum for the job status.
@@ -46,6 +55,8 @@ message SubmitJobRequest {
   int32 priority = 4;
   Target target = 5;
   string idempotency_key = 6;
+  string web_app_url = 7;
+  TestType test_type = 8;
 }
 
 // Response for a submitted job.
@@ -66,6 +77,10 @@ message GetJobStatusResponse {
   google.protobuf.Timestamp created_at = 3;
   google.protobuf.Timestamp completed_at = 4;
   string logs_url = 5;
+  string session_id = 6;
+  string video_url = 7;
+  string error_message = 8;
+  int32 test_duration = 9;
 }
 
 // Request to register a new agent.
@@ -89,4 +104,21 @@ message UpdateJobStatusRequest {
 // Response for a job status update request.
 message UpdateJobStatusResponse {
   bool success = 1;
+}
+
+// Request to fetch a job.
+message FetchJobRequest {
+  string target_capability = 1;
+}
+
+// Response for a fetch job request.
+message FetchJobResponse {
+  string job_id = 1;
+  string org_id = 2;
+  string app_version_id = 3;
+  string test_path = 4;
+  int32 priority = 5;
+  Target target = 6;
+  string web_app_url = 7;
+  TestType test_type = 8;
 }

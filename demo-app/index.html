@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QualGent Demo App</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="app">
+        <!-- 登录页面 -->
+        <div id="login-page" class="page active">
+            <div class="container">
+                <h1>欢迎使用 QualGent Demo</h1>
+                <div class="login-form">
+                    <h2>用户登录</h2>
+                    <form id="login-form">
+                        <div class="form-group">
+                            <label for="username">用户名/邮箱</label>
+                            <input type="text" id="username" data-testid="username" required>
+                            <span class="error" data-testid="username-error" style="display: none;">请输入用户名</span>
+                        </div>
+                        <div class="form-group">
+                            <label for="password">密码</label>
+                            <input type="password" id="password" data-testid="password" required>
+                            <span class="error" data-testid="password-error" style="display: none;">请输入密码</span>
+                        </div>
+                        <button type="submit" data-testid="login-button">登录</button>
+                    </form>
+                    <div class="error-message" data-testid="error-message" style="display: none;"></div>
+                    <p>还没有账户？<a href="#" onclick="showSignup()">立即注册</a></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 注册页面 -->
+        <div id="signup-page" class="page">
+            <div class="container">
+                <h1>用户注册</h1>
+                <div class="signup-form">
+                    <form id="signup-form">
+                        <div class="form-group">
+                            <label for="signup-email">邮箱</label>
+                            <input type="email" id="signup-email" data-testid="email" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="signup-password">密码</label>
+                            <input type="password" id="signup-password" data-testid="password" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="confirm-password">确认密码</label>
+                            <input type="password" id="confirm-password" data-testid="confirm-password" required>
+                        </div>
+                        <button type="submit" data-testid="signup-button">注册</button>
+                    </form>
+                    <p>已有账户？<a href="#" onclick="showLogin()">立即登录</a></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 引导页面 -->
+        <div id="onboarding-page" class="page">
+            <div class="container">
+                <div class="onboarding-steps">
+                    <div class="step active" data-step="1">
+                        <h2>欢迎来到 QualGent Demo</h2>
+                        <p>让我们开始设置您的账户</p>
+                        <button data-testid="get-started-button" onclick="nextStep()">开始设置</button>
+                    </div>
+                    
+                    <div class="step" data-step="2">
+                        <h2>个人信息</h2>
+                        <form id="profile-form">
+                            <div class="form-group">
+                                <label for="first-name">姓名</label>
+                                <input type="text" id="first-name" data-testid="first-name" required>
+                                <span class="error" data-testid="first-name-error" style="display: none;">请输入姓名</span>
+                            </div>
+                            <div class="form-group">
+                                <label for="last-name">姓氏</label>
+                                <input type="text" id="last-name" data-testid="last-name" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="profile-email">邮箱</label>
+                                <input type="email" id="profile-email" data-testid="email" required>
+                                <span class="error" data-testid="email-error" style="display: none;">请输入邮箱</span>
+                            </div>
+                            <button type="button" data-testid="next-button" onclick="nextStep()">下一步</button>
+                        </form>
+                    </div>
+                    
+                    <div class="step" data-step="3">
+                        <h2>偏好设置</h2>
+                        <div class="preferences">
+                            <label><input type="checkbox" data-testid="preference-option-1"> 接收邮件通知</label>
+                            <label><input type="checkbox" data-testid="preference-option-2"> 接收短信通知</label>
+                            <label><input type="checkbox" data-testid="preference-option-3"> 接收推送通知</label>
+                        </div>
+                        <button data-testid="next-button" onclick="nextStep()">下一步</button>
+                    </div>
+                    
+                    <div class="step" data-step="4">
+                        <h2>验证邮箱</h2>
+                        <p>我们已向您的邮箱发送了验证码</p>
+                        <div class="verification">
+                            <input type="text" data-testid="verification-input" placeholder="输入验证码" maxlength="6">
+                            <button data-testid="verify-button" onclick="verifyEmail()">验证</button>
+                        </div>
+                        <div class="verification-code" data-testid="verification-code" style="display: none;">
+                            <p>验证码: <strong>123456</strong></p>
+                        </div>
+                    </div>
+                    
+                    <div class="step" data-step="5">
+                        <h2>设置完成！</h2>
+                        <p>您的账户已成功设置</p>
+                        <div class="onboarding-complete" data-testid="onboarding-complete">
+                            <p>✅ 账户创建成功</p>
+                            <p>✅ 偏好设置完成</p>
+                            <p>✅ 邮箱验证成功</p>
+                        </div>
+                        <button onclick="goToDashboard()">进入应用</button>
+                    </div>
+                </div>
+                <button class="skip-button" data-testid="skip-onboarding" onclick="skipOnboarding()">跳过引导</button>
+            </div>
+        </div>
+
+        <!-- 主页面 -->
+        <div id="dashboard-page" class="page">
+            <nav class="navbar">
+                <div class="nav-brand">QualGent Demo</div>
+                <div class="nav-menu">
+                    <a href="#" onclick="showProducts()">产品</a>
+                    <a href="#" onclick="showCart()">购物车 <span data-testid="cart-count">0</span></a>
+                    <a href="#" onclick="showProfile()">个人资料</a>
+                    <a href="#" onclick="logout()">退出</a>
+                </div>
+            </nav>
+            
+            <div class="dashboard-content">
+                <div class="welcome-message" data-testid="welcome-message">
+                    <h1>欢迎回来！</h1>
+                    <p>您已成功登录 QualGent Demo 应用</p>
+                </div>
+                
+                <div class="user-profile" data-testid="user-profile">
+                    <h2>用户信息</h2>
+                    <p>姓名: <span id="user-name">testuser</span></p>
+                    <p>邮箱: <span id="user-email">testuser@example.com</span></p>
+                </div>
+                
+                <div class="quick-actions">
+                    <button onclick="showProducts()">浏览产品</button>
+                    <button onclick="showOrders()">查看订单</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 产品页面 -->
+        <div id="products-page" class="page">
+            <nav class="navbar">
+                <div class="nav-brand">产品</div>
+                <div class="nav-menu">
+                    <a href="#" onclick="showDashboard()">首页</a>
+                    <a href="#" onclick="showCart()">购物车 <span data-testid="cart-count">0</span></a>
+                </div>
+            </nav>
+            
+            <div class="products-content">
+                <div class="search-section">
+                    <input type="text" data-testid="search-input" placeholder="搜索产品...">
+                    <button data-testid="search-button" onclick="searchProducts()">搜索</button>
+                </div>
+                
+                <div class="product-grid" data-testid="product-grid">
+                    <div class="product-item" data-testid="product-item-1">
+                        <h3>笔记本电脑</h3>
+                        <p>高性能笔记本电脑</p>
+                        <p class="price">¥8,999</p>
+                        <button data-testid="add-to-cart" onclick="addToCart(1)">加入购物车</button>
+                    </div>
+                    <div class="product-item" data-testid="product-item-2">
+                        <h3>智能手机</h3>
+                        <p>最新款智能手机</p>
+                        <p class="price">¥4,999</p>
+                        <button data-testid="add-to-cart" onclick="addToCart(2)">加入购物车</button>
+                    </div>
+                    <div class="product-item" data-testid="product-item-3">
+                        <h3>无线耳机</h3>
+                        <p>高品质无线耳机</p>
+                        <p class="price">¥1,299</p>
+                        <button data-testid="add-to-cart" onclick="addToCart(3)">加入购物车</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 购物车页面 -->
+        <div id="cart-page" class="page">
+            <nav class="navbar">
+                <div class="nav-brand">购物车</div>
+                <div class="nav-menu">
+                    <a href="#" onclick="showProducts()">产品</a>
+                    <a href="#" onclick="showDashboard()">首页</a>
+                </div>
+            </nav>
+            
+            <div class="cart-content">
+                <div id="cart-items">
+                    <!-- 购物车项目将在这里动态显示 -->
+                </div>
+                <div class="cart-total">
+                    <h3>总计: ¥<span id="cart-total">0</span></h3>
+                    <button data-testid="proceed-checkout" onclick="showCheckout()">结账</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 结账页面 -->
+        <div id="checkout-page" class="page">
+            <nav class="navbar">
+                <div class="nav-brand">结账</div>
+                <div class="nav-menu">
+                    <a href="#" onclick="showCart()">购物车</a>
+                </div>
+            </nav>
+            
+            <div class="checkout-content">
+                <div class="shipping-info">
+                    <h2>配送信息</h2>
+                    <form id="shipping-form">
+                        <div class="form-group">
+                            <label for="shipping-name">收货人姓名</label>
+                            <input type="text" id="shipping-name" data-testid="shipping-name" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="shipping-address">地址</label>
+                            <input type="text" id="shipping-address" data-testid="shipping-address" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="shipping-city">城市</label>
+                            <input type="text" id="shipping-city" data-testid="shipping-city" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="shipping-zip">邮编</label>
+                            <input type="text" id="shipping-zip" data-testid="shipping-zip" required>
+                        </div>
+                        <button type="button" data-testid="save-shipping" onclick="saveShipping()">保存配送信息</button>
+                    </form>
+                </div>
+                
+                <div class="payment-info">
+                    <h2>支付信息</h2>
+                    <form id="payment-form">
+                        <div class="form-group">
+                            <label for="card-number">卡号</label>
+                            <input type="text" id="card-number" data-testid="card-number" placeholder="4111111111111111" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="card-expiry">有效期</label>
+                            <input type="text" id="card-expiry" data-testid="card-expiry" placeholder="12/25" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="card-cvv">CVV</label>
+                            <input type="text" id="card-cvv" data-testid="card-cvv" placeholder="123" required>
+                        </div>
+                        <button type="button" data-testid="pay-button" onclick="processPayment()">支付</button>
+                    </form>
+                </div>
+                
+                <div class="payment-error" data-testid="payment-error" style="display: none;">
+                    <p>支付失败，请重试</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 订单确认页面 -->
+        <div id="order-success-page" class="page">
+            <div class="container">
+                <div class="order-success" data-testid="order-success">
+                    <h1>订单提交成功！</h1>
+                    <div class="order-number" data-testid="order-number">
+                        <p>订单号: <strong>ORD-2025-001</strong></p>
+                    </div>
+                    <p>感谢您的购买，我们将尽快为您发货。</p>
+                    <button onclick="showOrders()">查看订单</button>
+                    <button onclick="showDashboard()">返回首页</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 订单历史页面 -->
+        <div id="orders-page" class="page">
+            <nav class="navbar">
+                <div class="nav-brand">订单历史</div>
+                <div class="nav-menu">
+                    <a href="#" onclick="showDashboard()">首页</a>
+                </div>
+            </nav>
+            
+            <div class="orders-content">
+                <div class="order-history" data-testid="order-history">
+                    <h2>我的订单</h2>
+                    <div class="order-item">
+                        <h3>订单 #ORD-2025-001</h3>
+                        <p>状态: 已确认</p>
+                        <p>总金额: ¥8,999</p>
+                        <p>创建时间: 2025-07-20</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html> 

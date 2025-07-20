@@ -23,6 +23,8 @@ var (
 	target     string
 	jobID      string
 	jsonOutput bool
+	webAppURL  string
+	testType   string
 )
 
 func main() {
@@ -46,10 +48,16 @@ func main() {
 	submitCmd.Flags().StringVar(&appVersionID, "app-version-id", "", "Application version ID (required)")
 	submitCmd.Flags().StringVar(&testPath, "test", "", "Test file path (required)")
 	submitCmd.Flags().Int32Var(&priority, "priority", 0, "Job priority (0-10)")
-	submitCmd.Flags().StringVar(&target, "target", "emulator", "Execution target (emulator|device|browserstack)")
+	submitCmd.Flags().StringVar(&target, "target", "emulator", "Execution target (emulator|device|browserstack|web)")
+	submitCmd.Flags().StringVar(&webAppURL, "web-app-url", "", "URL of the web application (required for web target)")
+	submitCmd.Flags().StringVar(&testType, "test-type", "", "Type of test (PLAYWRIGHT|ESPRESSO)")
 	submitCmd.MarkFlagRequired("org-id")
-	submitCmd.MarkFlagRequired("app-version-id")
 	submitCmd.MarkFlagRequired("test")
+
+	// Conditional required flags
+	submitCmd.MarkFlagsMutuallyExclusive("app-version-id", "web-app-url")
+	// For web target, web-app-url and test-type are required together
+	// For other targets, app-version-id is required
 
 	// Status command
 	statusCmd := &cobra.Command{
@@ -72,8 +80,21 @@ func main() {
 
 func submitJob(cmd *cobra.Command, args []string) error {
 	// Validate target
-	if target != "emulator" && target != "device" && target != "browserstack" {
-		return fmt.Errorf("invalid target: %s. Must be one of: emulator, device, browserstack", target)
+	if target != "emulator" && target != "device" && target != "browserstack" && target != "web" {
+		return fmt.Errorf("invalid target: %s. Must be one of: emulator, device, browserstack, web", target)
+	}
+
+	// Validate conditional required flags
+	if target == "web" && webAppURL == "" {
+		return fmt.Errorf("web-app-url is required for web target")
+	}
+	if target != "web" && appVersionID == "" {
+		return fmt.Errorf("app-version-id is required for non-web targets")
+	}
+
+	// Validate test type
+	if testType != "" && testType != "PLAYWRIGHT" && testType != "ESPRESSO" {
+		return fmt.Errorf("invalid test-type: %s. Must be PLAYWRIGHT or ESPRESSO", testType)
 	}
 
 	// Validate priority
@@ -98,6 +119,8 @@ func submitJob(cmd *cobra.Command, args []string) error {
 		Priority:       priority,
 		Target:         parseTarget(target),
 		IdempotencyKey: uuid.New().String(),
+		WebAppUrl:      webAppURL,
+		TestType:       parseTestType(testType),
 	}
 
 	// Submit job
@@ -158,6 +181,10 @@ func getJobStatus(cmd *cobra.Command, args []string) error {
 			"created_at": resp.CreatedAt.AsTime().Format(time.RFC3339),
 			"completed_at": func() string { if resp.CompletedAt != nil { return resp.CompletedAt.AsTime().Format(time.RFC3339) } else { return "" } }(),
 			"logs_url":   resp.LogsUrl,
+			"session_id": resp.SessionId,
+			"video_url":  resp.VideoUrl,
+			"error_message": resp.ErrorMessage,
+			"test_duration": resp.TestDuration,
 		}
 		jsonBytes, _ := json.Marshal(output)
 		fmt.Println(string(jsonBytes))
@@ -169,8 +196,20 @@ func getJobStatus(cmd *cobra.Command, args []string) error {
 		if resp.CompletedAt != nil {
 			fmt.Printf("Completed: %s\n", resp.CompletedAt.AsTime().Format(time.RFC3339))
 		}
+		if resp.SessionId != "" {
+			fmt.Printf("Session ID: %s\n", resp.SessionId)
+		}
 		if resp.LogsUrl != "" {
 			fmt.Printf("Logs URL: %s\n", resp.LogsUrl)
+		}
+		if resp.VideoUrl != "" {
+			fmt.Printf("Video URL: %s\n", resp.VideoUrl)
+		}
+		if resp.ErrorMessage != "" {
+			fmt.Printf("Error: %s\n", resp.ErrorMessage)
+		}
+		if resp.TestDuration > 0 {
+			fmt.Printf("Duration: %d seconds\n", resp.TestDuration)
 		}
 	}
 
@@ -185,7 +224,20 @@ func parseTarget(target string) pb.Target {
 		return pb.Target_DEVICE
 	case "browserstack":
 		return pb.Target_BROWSERSTACK
+	case "web":
+		return pb.Target_WEB
 	default:
 		return pb.Target_TARGET_UNSPECIFIED
+	}
+}
+
+func parseTestType(testType string) pb.TestType {
+	switch testType {
+	case "PLAYWRIGHT":
+		return pb.TestType_PLAYWRIGHT
+	case "ESPRESSO":
+		return pb.TestType_ESPRESSO
+	default:
+		return pb.TestType_TEST_TYPE_UNSPECIFIED
 	}
 }

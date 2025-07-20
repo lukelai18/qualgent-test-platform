@@ -23,6 +23,7 @@ const (
 	JobService_GetJobStatus_FullMethodName    = "/job_service.JobService/GetJobStatus"
 	JobService_RegisterAgent_FullMethodName   = "/job_service.JobService/RegisterAgent"
 	JobService_UpdateJobStatus_FullMethodName = "/job_service.JobService/UpdateJobStatus"
+	JobService_FetchJob_FullMethodName        = "/job_service.JobService/FetchJob"
 )
 
 // JobServiceClient is the client API for JobService service.
@@ -39,6 +40,8 @@ type JobServiceClient interface {
 	RegisterAgent(ctx context.Context, in *RegisterAgentRequest, opts ...grpc.CallOption) (*RegisterAgentResponse, error)
 	// UpdateJobStatus is used by an agent to report job progress.
 	UpdateJobStatus(ctx context.Context, in *UpdateJobStatusRequest, opts ...grpc.CallOption) (*UpdateJobStatusResponse, error)
+	// FetchJob fetches a job for a given target capability.
+	FetchJob(ctx context.Context, in *FetchJobRequest, opts ...grpc.CallOption) (*FetchJobResponse, error)
 }
 
 type jobServiceClient struct {
@@ -89,6 +92,16 @@ func (c *jobServiceClient) UpdateJobStatus(ctx context.Context, in *UpdateJobSta
 	return out, nil
 }
 
+func (c *jobServiceClient) FetchJob(ctx context.Context, in *FetchJobRequest, opts ...grpc.CallOption) (*FetchJobResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(FetchJobResponse)
+	err := c.cc.Invoke(ctx, JobService_FetchJob_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // JobServiceServer is the server API for JobService service.
 // All implementations must embed UnimplementedJobServiceServer
 // for forward compatibility
@@ -103,6 +116,8 @@ type JobServiceServer interface {
 	RegisterAgent(context.Context, *RegisterAgentRequest) (*RegisterAgentResponse, error)
 	// UpdateJobStatus is used by an agent to report job progress.
 	UpdateJobStatus(context.Context, *UpdateJobStatusRequest) (*UpdateJobStatusResponse, error)
+	// FetchJob fetches a job for a given target capability.
+	FetchJob(context.Context, *FetchJobRequest) (*FetchJobResponse, error)
 	mustEmbedUnimplementedJobServiceServer()
 }
 
@@ -121,6 +136,9 @@ func (UnimplementedJobServiceServer) RegisterAgent(context.Context, *RegisterAge
 }
 func (UnimplementedJobServiceServer) UpdateJobStatus(context.Context, *UpdateJobStatusRequest) (*UpdateJobStatusResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateJobStatus not implemented")
+}
+func (UnimplementedJobServiceServer) FetchJob(context.Context, *FetchJobRequest) (*FetchJobResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method FetchJob not implemented")
 }
 func (UnimplementedJobServiceServer) mustEmbedUnimplementedJobServiceServer() {}
 
@@ -207,6 +225,24 @@ func _JobService_UpdateJobStatus_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _JobService_FetchJob_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(FetchJobRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(JobServiceServer).FetchJob(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: JobService_FetchJob_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(JobServiceServer).FetchJob(ctx, req.(*FetchJobRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // JobService_ServiceDesc is the grpc.ServiceDesc for JobService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -229,6 +265,10 @@ var JobService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UpdateJobStatus",
 			Handler:    _JobService_UpdateJobStatus_Handler,
+		},
+		{
+			MethodName: "FetchJob",
+			Handler:    _JobService_FetchJob_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

@@ -32,5 +32,14 @@ services:
       - postgres
       - redis
 
+  appwright-agent:
+    build: .
+    environment:
+      - BROWSERSTACK_USERNAME=${BROWSERSTACK_USERNAME}
+      - BROWSERSTACK_ACCESS_KEY=${BROWSERSTACK_ACCESS_KEY}
+    command: ["./appwright-agent", "--server=job-server:8080"]
+    depends_on:
+      - job-server
+
 volumes:
   postgres_data:

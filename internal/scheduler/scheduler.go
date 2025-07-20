@@ -24,6 +24,8 @@ type JobGroup struct {
 	AppVersionID string
 	Target       string
 	Jobs         []*store.Job
+	WebAppURL    *string // New field
+	TestType     *string // New field
 }
 
 func NewScheduler(postgresStore *store.PostgresStore, redisStore *store.RedisStore, instanceID string) *Scheduler {
@@ -120,16 +122,27 @@ func (s *Scheduler) groupJobs(jobs []*store.Job) []*JobGroup {
 	groupMap := make(map[string]*JobGroup)
 
 	for _, job := range jobs {
-		key := fmt.Sprintf("%s:%s", job.AppVersionID, job.Target)
+		key := ""
+		if job.Target == "web" {
+			key = fmt.Sprintf("%s:%s:%s", *job.WebAppURL, job.Target, *job.TestType)
+		} else {
+			key = fmt.Sprintf("%s:%s", job.AppVersionID, job.Target)
+		}
 		
 		if group, exists := groupMap[key]; exists {
 			group.Jobs = append(group.Jobs, job)
 		} else {
-			groupMap[key] = &JobGroup{
-				AppVersionID: job.AppVersionID,
+			newGroup := &JobGroup{
 				Target:       job.Target,
 				Jobs:       []*store.Job{job},
 			}
+			if job.Target == "web" {
+				newGroup.WebAppURL = job.WebAppURL
+				newGroup.TestType = job.TestType
+			} else {
+				newGroup.AppVersionID = job.AppVersionID
+			}
+			groupMap[key] = newGroup
 		}
 	}
 
@@ -164,11 +177,6 @@ func (s *Scheduler) createAndDispatchGroup(ctx context.Context, group *JobGroup)
 		return fmt.Errorf("failed to update jobs to group: %w", err)
 	}
 
-	// Push to dispatch queue
-	if err := s.redisStore.PushToDispatchQueue(ctx, group.Target, jobGroup.ID); err != nil {
-		return fmt.Errorf("failed to push to dispatch queue: %w", err)
-	}
-
 	log.Printf("Created job group %s with %d jobs for target %s",		jobGroup.ID, len(group.Jobs), group.Target)
 
 	return nil
@@ -179,4 +187,4 @@ func (s *Scheduler) GetJobGroup(ctx context.Context, groupID uuid.UUID) (*store.
 	// This would need to be implemented in the store layer
 	// For now, we'll return a placeholder
 	return nil, nil, fmt.Errorf("not implemented")
-} 
+}
